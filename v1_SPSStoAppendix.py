@@ -38,9 +38,19 @@ for i in range(len(valid_percent_indices)):
     title_list.append(title)
     start_row = valid_percent_indices[i]
     if i + 1 < len(valid_percent_indices):
-        end_row = valid_percent_indices[i + 1] - 3
+        subset = df1.iloc[start_row : valid_percent_indices[i + 1]]
+        first_empty_row = subset[subset.isna().all(axis=1)].index.min()
+        if pd.isna(first_empty_row):
+            print("err!")
+            exit
+        end_row = first_empty_row - 1
     else:
-        end_row = len(df1) - 1
+        subset = df1.iloc[start_row : len(df1)]
+        first_empty_row = subset[subset.isna().all(axis=1)].index.min()
+        if pd.isna(first_empty_row):
+            end_row = len(df1) - 1
+        else:
+            end_row = first_empty_row - 1
 
     # 1=options, 2=numbers, 4=valid percent
     table_total = df1.iloc[(start_row + 1) : end_row + 1, [1, 2, 4]].copy()
@@ -100,9 +110,19 @@ for i in range(len(valid_percent_indices2)):
     title2 = df2.iloc[title_row2, 0]
     start_row2 = valid_percent_indices2[i]
     if i + 1 < len(valid_percent_indices2):
-        end_row2 = valid_percent_indices2[i + 1] - 3
+        subset2 = df2.iloc[start_row2 : valid_percent_indices2[i + 1]]
+        first_empty_row2 = subset2[subset2.isna().all(axis=1)].index.min()
+        if pd.isna(first_empty_row2):
+            print("err!")
+            exit
+        end_row2 = first_empty_row2 - 1
     else:
-        end_row2 = len(df2) - 1
+        subset2 = df2.iloc[start_row2 : len(df2)]
+        first_empty_row2 = subset2[subset2.isna().all(axis=1)].index.min()
+        if pd.isna(first_empty_row2):
+            end_row2 = len(df2) - 1
+        else:
+            end_row2 = first_empty_row2 - 1
 
     # 0=program, 1=valid, 2=options, 3=numbers, 5=valid percent
     table_program = df2.iloc[(start_row2 + 1) : end_row2 + 1, [0, 1, 2, 3, 5]].copy()
@@ -132,7 +152,7 @@ for i in range(len(valid_percent_indices2)):
         # cur program NO valid
         if table_program.iloc[ibar, 1] != "Valid":
             table_program.iloc[ibar:iibar, :] = np.nan
-            sum_dict[programs[k]] = '-'
+            sum_dict[programs[k]] = "-"
         else:
             # cur program have >1 value
             if end_this_table2.size > 0:
@@ -147,6 +167,9 @@ for i in range(len(valid_percent_indices2)):
                 sum_dict[programs[k]] = (
                     f"n = {table_program.iloc[ibar : (ibar + 1), 3].dropna().astype(int).sum()}(%)"
                 )
+        # print("k=", k)
+        # print("programs[k]", programs[k])
+        # print("sum_dict[programs[k]]", sum_dict[programs[k]])
 
     # Get the value col
     table_program["value"] = table_program.apply(
@@ -163,7 +186,7 @@ for i in range(len(valid_percent_indices2)):
         "Bachelor of  Nursing",
         "Diploma of Licensed Practical Nursing",
     ]
-                # "Bachelor of Science in Psychiatric Nursing" is not included
+    # "Bachelor of Science in Psychiatric Nursing" is not included
     existing_programs = table_program.columns.tolist()
     missing_programs = [
         prog for prog in expected_programs if prog not in existing_programs
@@ -179,8 +202,8 @@ for i in range(len(valid_percent_indices2)):
     sums = [sum_dict[key] for key in sorted(sum_dict.keys())]
     sums.insert(0, "sum")
 
-#    if len(sums) > 3:
-#        sums = [value for value in sums if value != '-']
+    #    if len(sums) > 3:
+    #        sums = [value for value in sums if value != '-']
 
     print(sums)
     print(table_program.columns)
@@ -213,7 +236,7 @@ for title in results:
     else:
         print(f"Warning: No 'Total' or 'Other' found for title: {title}")
 
-#for title in final_results:
+# for title in final_results:
 #    print(f"Title: {title}")
 #    print(final_results[title])
 
@@ -236,7 +259,7 @@ with pd.ExcelWriter("final_results.xlsx", engine="openpyxl") as writer:
         output_df.loc[2, :] = sum_row
 
         # option
-        for i in range(0, len(df)-1):
+        for i in range(0, len(df) - 1):
             option_row = df.iloc[i].tolist()
             option_row = [item if pd.notna(item) else "-" for item in option_row]
             output_df.loc[3 + i, :] = option_row
@@ -247,29 +270,35 @@ with pd.ExcelWriter("final_results.xlsx", engine="openpyxl") as writer:
     # write
     combined_df.to_excel(writer, sheet_name="Results", index=False, header=False)
 
-wb = openpyxl.load_workbook('final_results.xlsx')
+wb = openpyxl.load_workbook("final_results.xlsx")
 ws = wb.active
 
 for row in ws.iter_rows():
     for cell in row:
         cell.font = Font(name="Arial")
 
-fill = PatternFill(start_color="1D55A5", end_color="1D55A5", fill_type="solid") #首行深蓝色
-alignment = Alignment(horizontal="left") 
-font = Font(name = 'Arial', color="FFFFFF", bold=True, italic=True) 
-fill_light = PatternFill(start_color="DDE9F5", end_color="DDE9F5", fill_type="solid") #隔行填浅蓝色
+fill = PatternFill(
+    start_color="1D55A5", end_color="1D55A5", fill_type="solid"
+)  # 首行深蓝色
+alignment = Alignment(horizontal="left")
+font = Font(name="Arial", color="FFFFFF", bold=True, italic=True)
+fill_light = PatternFill(
+    start_color="DDE9F5", end_color="DDE9F5", fill_type="solid"
+)  # 隔行填浅蓝色
 start_light = None
 
 
-for row in ws.iter_rows(min_col=1, max_col=1, min_row=1, max_row=ws.max_row): 
+for row in ws.iter_rows(min_col=1, max_col=1, min_row=1, max_row=ws.max_row):
     for cell in row:
-        if cell.value in title_list: 
-            ws.merge_cells(start_row=cell.row, start_column=1, end_row=cell.row, end_column=4)
-            merged_cell = ws.cell(row=cell.row, column=1)  
+        if cell.value in title_list:
+            ws.merge_cells(
+                start_row=cell.row, start_column=1, end_row=cell.row, end_column=4
+            )
+            merged_cell = ws.cell(row=cell.row, column=1)
             merged_cell.fill = fill
             merged_cell.alignment = alignment
             merged_cell.font = font
-'''            start_light = cell.row
+"""            start_light = cell.row
 
 if start_row: 
     for row_idx in range(start_row + 1, ws.max_row + 1): 
@@ -277,7 +306,7 @@ if start_row:
         if fill_color:
             for col in range(1, ws.max_column + 1):
                 ws.cell(row=row_idx, column=col).fill = fill_color
-'''
+"""
 
 for row in range(1, ws.max_row + 1):
     if all(ws.cell(row=row, column=col).value in [None, ""] for col in range(1, 5)):
@@ -285,17 +314,17 @@ for row in range(1, ws.max_row + 1):
 
 
 border = Border(
-    left=Side(style='thin', color='000000'),
-    right=Side(style='thin', color='000000'),
-    top=Side(style='thin', color='000000'),
-    bottom=Side(style='thin', color='000000')
+    left=Side(style="thin", color="000000"),
+    right=Side(style="thin", color="000000"),
+    top=Side(style="thin", color="000000"),
+    bottom=Side(style="thin", color="000000"),
 )
 
-last_row = ws.max_row 
+last_row = ws.max_row
 for row in ws.iter_rows(min_row=1, max_row=last_row, min_col=1, max_col=4):
     for cell in row:
         cell.border = border
 
-wb.save('Appendix.xlsx')
+wb.save("Appendix.xlsx")
 
 print("write success")
